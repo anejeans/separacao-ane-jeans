@@ -211,7 +211,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.02</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.03</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -515,11 +515,16 @@ async function iniciarBusca() {
       .eq('separacao_id', result.separacao_id)
       .order('ordem');
 
+    console.log('itensDb retornados:', itensDb?.length, JSON.stringify(itensDb?.slice(0,2)));
+    console.log('result.itens:', result.itens?.length, JSON.stringify(result.itens?.slice(0,2)));
+
     separacaoAtual = { id: result.separacao_id, sequencia: result.sequencia };
-    itensAtuais    = itensDb || [];
+    // Usa itensDb se disponível, senão usa result.itens como fallback
+    itensAtuais    = (itensDb && itensDb.length > 0) ? itensDb : (result.itens || []);
     totalPedidos   = result.total_pedidos;
     itemIdx        = 0;
 
+    console.log('itensAtuais final:', itensAtuais.length);
     mostrarLista();
 
   } catch (e) {
