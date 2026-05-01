@@ -211,7 +211,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.03</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.04</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -637,6 +637,7 @@ async function registrarLeitura(skuLido) {
     document.getElementById('error-msg').classList.add('show');
     setTimeout(() => { card.classList.remove('error'); }, 500);
     vibrar(300);
+    bipar('erro');
     return;
   }
 
@@ -655,10 +656,12 @@ async function registrarLeitura(skuLido) {
   if (concluido) {
     card.classList.add('success');
     vibrar(100);
+    bipar('completo');
     setTimeout(() => proximoItem(), 800);
   } else {
     renderizarItem();
     vibrar(50);
+    bipar('ok');
   }
 
   renderizarItem();
@@ -771,6 +774,40 @@ function escanear() {
 
 function vibrar(ms) {
   if (navigator.vibrate) navigator.vibrate(ms);
+}
+
+function bipar(tipo = 'ok') {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (tipo === 'ok') {
+      // Bip curto agudo — leitura correta
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } else if (tipo === 'completo') {
+      // Dois bips — item concluído
+      osc.frequency.setValueAtTime(660, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    } else if (tipo === 'erro') {
+      // Bip grave longo — produto errado
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+    }
+  } catch(e) {}
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
