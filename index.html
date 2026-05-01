@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0069C2">
+<title>Ane Jeans — Separação</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --blue: #0069C2;
+  --blue-dark: #004F9A;
+  --blue-light: #E6F1FB;
+  --green: #2E7D32;
+  --green-light: #E8F5E9;
+  --red: #C62828;
+  --red-light: #FFEBEE;
+  --amber: #E65100;
+  --amber-light: #FFF3E0;
+  --gray-100: #F5F5F5;
+  --gray-200: #EEEEEE;
+  --gray-300: #E0E0E0;
+  --gray-500: #9E9E9E;
+  --gray-700: #616161;
+  --gray-900: #212121;
+  --white: #FFFFFF;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.15);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-100); color: var(--gray-900); font-size: 16px; }
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* TOPBAR */
+.topbar { background: var(--blue); color: white; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-md); position: sticky; top: 0; z-index: 10; }
+.topbar-back { background: none; border: none; color: white; font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.topbar-title { font-size: 16px; font-weight: 600; flex: 1; }
+.topbar-sub { font-size: 12px; opacity: 0.8; }
+
+/* LOGIN */
+#screen-login { background: var(--white); justify-content: center; align-items: center; padding: 32px 24px; }
+.login-logo { text-align: center; margin-bottom: 40px; }
+.login-logo-box { display: inline-flex; align-items: center; gap: 10px; }
+.login-logo-icon { width: 52px; height: 52px; background: var(--blue); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.login-logo-icon svg { width: 32px; height: 32px; }
+.login-logo-text { text-align: left; }
+.login-logo-name { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; }
+.login-logo-sub { font-size: 12px; color: var(--gray-500); }
+.login-form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 16px; }
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 13px; font-weight: 500; color: var(--gray-700); }
+.field-input { border: 1.5px solid var(--gray-300); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 16px; color: var(--gray-900); background: var(--white); width: 100%; outline: none; transition: border-color 0.2s; }
+.field-input:focus { border-color: var(--blue); }
+.login-error { font-size: 13px; color: var(--red); text-align: center; display: none; }
+.login-error.show { display: block; }
+
+/* BUTTONS */
+.btn { border: none; border-radius: var(--radius-sm); padding: 14px 20px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; transition: opacity 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn:active { transform: scale(0.98); opacity: 0.9; }
+.btn-blue { background: var(--blue); color: white; }
+.btn-outline { background: var(--white); color: var(--blue); border: 1.5px solid var(--blue); }
+.btn-danger { background: var(--white); color: var(--red); border: 1.5px solid var(--red); }
+.btn-gray { background: var(--gray-200); color: var(--gray-700); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* DASHBOARD */
+#screen-dashboard { background: var(--gray-100); }
+.dashboard-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-card { background: var(--white); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); text-align: center; }
+.stat-num { font-size: 28px; font-weight: 700; color: var(--blue); line-height: 1; }
+.stat-label { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+.main-btn { background: var(--blue); color: white; border: none; border-radius: var(--radius); padding: 20px; font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: var(--shadow-md); transition: opacity 0.15s, transform 0.1s; }
+.main-btn:active { transform: scale(0.98); }
+.main-btn svg { width: 24px; height: 24px; }
+.section-title { font-size: 12px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.06em; }
+.hist-list { display: flex; flex-direction: column; gap: 10px; }
+.hist-card { background: var(--white); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.hist-seq { font-size: 11px; font-weight: 700; color: var(--blue); background: var(--blue-light); padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+.hist-info { flex: 1; min-width: 0; }
+.hist-title { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+.hist-sub { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+.badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+.badge-ok { background: var(--green-light); color: var(--green); }
+.badge-pend { background: var(--amber-light); color: var(--amber); }
+.empty-hist { text-align: center; padding: 24px; color: var(--gray-500); font-size: 14px; }
+
+/* LOADING */
+#screen-loading { background: var(--white); justify-content: center; align-items: center; gap: 24px; }
+.loading-content { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 32px; }
+.spinner { width: 52px; height: 52px; border: 4px solid var(--blue-light); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-title { font-size: 17px; font-weight: 600; color: var(--gray-900); }
+.loading-sub { font-size: 14px; color: var(--gray-500); }
+.loading-timer { font-size: 13px; color: var(--blue); font-weight: 500; }
+
+/* LISTA DE ITENS */
+#screen-lista { background: var(--gray-100); }
+.lista-content { padding: 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.lista-summary { background: var(--blue); color: white; border-radius: var(--radius); padding: 14px 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; text-align: center; }
+.lista-summary-num { font-size: 20px; font-weight: 700; }
+.lista-summary-label { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+.lista-item { background: var(--white); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px; }
+.lista-item.done { opacity: 0.5; }
+.lista-item-sku { font-size: 18px; font-weight: 700; color: var(--blue); font-family: monospace; letter-spacing: 0.04em; flex-shrink: 0; }
+.lista-item-info { flex: 1; min-width: 0; }
+.lista-item-nome { font-size: 13px; color: var(--gray-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lista-item-qtd { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-top: 2px; }
+.lista-item-check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--gray-300); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.lista-item-check.done { background: var(--green); border-color: var(--green); color: white; }
+.start-btn-wrap { padding: 16px; background: var(--gray-100); }
+
+/* SEPARAÇÃO */
+#screen-separacao { background: var(--gray-100); }
+.sep-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.progress-header { background: var(--white); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.progress-text { font-size: 13px; color: var(--gray-700); }
+.progress-pct { font-size: 13px; font-weight: 700; color: var(--blue); }
+.progress-bar { height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.3s; }
+.item-card { background: var(--white); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-md); border: 2px solid transparent; }
+.item-card.success { border-color: var(--green); animation: pulse-green 0.4s ease; }
+.item-card.error { border-color: var(--red); animation: shake 0.4s ease; }
+@keyframes pulse-green { 0%,100%{transform:scale(1)} 50%{transform:scale(1.02)} }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+.item-sku { font-size: 36px; font-weight: 800; color: var(--blue); font-family: monospace; letter-spacing: 0.05em; line-height: 1.1; }
+.item-nome { font-size: 14px; color: var(--gray-700); margin-top: 6px; }
+.counter-area { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+.counter-num { font-size: 56px; font-weight: 800; color: var(--gray-900); line-height: 1; }
+.counter-sep { font-size: 28px; color: var(--gray-300); font-weight: 300; }
+.counter-total { font-size: 28px; font-weight: 600; color: var(--gray-500); }
+.counter-bar { flex: 1; }
+.counter-bar-track { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.counter-bar-fill { height: 100%; background: var(--blue); border-radius: 4px; transition: width 0.3s; }
+.counter-label { font-size: 12px; color: var(--gray-500); }
+.cam-box { background: #000; border-radius: var(--radius); overflow: hidden; position: relative; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+.cam-box video { width: 100%; display: block; }
+.cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.cam-frame { width: 220px; height: 100px; position: relative; }
+.cam-frame::before, .cam-frame::after, .cam-corner-tl, .cam-corner-br { content: ''; position: absolute; width: 20px; height: 20px; border-color: #fff; border-style: solid; }
+.cam-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
+.cam-frame::after { top: 0; right: 0; border-width: 3px 3px 0 0; }
+.cam-corner-tl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+.cam-corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+.cam-line { position: absolute; left: 10%; right: 10%; height: 2px; background: rgba(0,105,194,0.8); top: 50%; animation: scan 2s ease-in-out infinite; }
+@keyframes scan { 0%,100%{top:20%} 50%{top:80%} }
+.cam-label { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.7); font-size: 12px; }
+.error-msg { background: var(--red-light); color: var(--red); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 14px; font-weight: 500; text-align: center; display: none; }
+.error-msg.show { display: block; animation: fade-in 0.2s; }
+@keyframes fade-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+.sep-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* CONCLUÍDO */
+#screen-concluido { background: var(--white); justify-content: center; align-items: center; }
+.concluido-content { padding: 32px 24px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 360px; }
+.concluido-icon { width: 80px; height: 80px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.concluido-icon svg { width: 44px; height: 44px; color: var(--green); }
+.concluido-title { font-size: 22px; font-weight: 700; color: var(--gray-900); text-align: center; }
+.concluido-sub { font-size: 14px; color: var(--gray-500); text-align: center; }
+.summary-box { background: var(--gray-100); border-radius: var(--radius); padding: 16px; width: 100%; display: flex; flex-direction: column; gap: 0; }
+.summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--gray-200); font-size: 14px; }
+.summary-row:last-child { border-bottom: none; }
+.summary-key { color: var(--gray-700); }
+.summary-val { font-weight: 700; color: var(--gray-900); }
+.concluido-btns { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="login-logo">
+    <div class="login-logo-box">
+      <div class="login-logo-icon">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="8" width="24" height="18" rx="2" stroke="white" stroke-width="2"/>
+          <path d="M10 8V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2" stroke="white" stroke-width="2"/>
+          <path d="M16 14v6M13 17h6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="login-logo-text">
+        <div class="login-logo-name">Ane Jeans</div>
+        <div class="login-logo-sub">Sistema de Separação</div>
+      </div>
+    </div>
+  </div>
+  <div class="login-form">
+    <div class="field-group">
+      <div class="field-label">E-mail</div>
+      <input id="login-email" type="email" class="field-input" placeholder="seu@email.com" autocomplete="email">
+    </div>
+    <div class="field-group">
+      <div class="field-label">Senha</div>
+      <input id="login-senha" type="password" class="field-input" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div id="login-error" class="login-error">E-mail ou senha incorretos.</div>
+    <button class="btn btn-blue" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="screen-dashboard" class="screen">
+  <div class="topbar">
+    <div style="flex:1">
+      <div class="topbar-title">Ane Jeans — Separação</div>
+      <div class="topbar-sub" id="dash-usuario"></div>
+    </div>
+    <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
+  </div>
+  <div class="dashboard-content">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-pedidos">—</div>
+        <div class="stat-label">Pedidos hoje</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-separacoes">—</div>
+        <div class="stat-label">Separações hoje</div>
+      </div>
+    </div>
+    <button class="main-btn" onclick="iniciarBusca()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      Buscar separação
+    </button>
+    <div class="section-title">Separações de hoje</div>
+    <div class="hist-list" id="hist-list">
+      <div class="empty-hist">Nenhuma separação ainda hoje.</div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen">
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <div>
+      <div class="loading-title">Buscando pedidos no Bling...</div>
+      <div class="loading-sub" id="loading-msg">Conectando ao Bling</div>
+    </div>
+    <div class="loading-timer" id="loading-timer">0s</div>
+  </div>
+</div>
+
+<!-- LISTA DE ITENS -->
+<div id="screen-lista" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="voltarDashboard()">‹</button>
+    <div>
+      <div class="topbar-title" id="lista-title">Separação #1</div>
+      <div class="topbar-sub" id="lista-sub"></div>
+    </div>
+  </div>
+  <div class="lista-content">
+    <div class="lista-summary">
+      <div>
+        <div class="lista-summary-num" id="lista-pedidos">0</div>
+        <div class="lista-summary-label">Pedidos</div>
+      </div>
+      <div>
+        <div class="lista-summary-num" id="lista-skus">0</div>
+        <div class="lista-summary-label">SKUs</div>
+      </div>
+      <div>
+        <div class="lista-summary-num" id="lista-unidades">0</div>
+        <div class="lista-summary-label">Unidades</div>
+      </div>
+    </div>
+    <div id="lista-itens"></div>
+  </div>
+  <div class="start-btn-wrap">
+    <button class="btn btn-blue" onclick="irParaSeparacao(0)">Iniciar separação ›</button>
+  </div>
+</div>
+
+<!-- SEPARAÇÃO -->
+<div id="screen-separacao" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="voltarLista()">‹</button>
+    <div style="flex:1">
+      <div class="topbar-title" id="sep-titulo">Separação</div>
+      <div class="topbar-sub" id="sep-progresso"></div>
+    </div>
+  </div>
+  <div class="sep-content">
+    <div class="progress-header">
+      <div class="progress-info">
+        <div class="progress-text" id="sep-prog-text">Item 1 de 18</div>
+        <div class="progress-pct" id="sep-prog-pct">0%</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="sep-prog-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="item-card" id="item-card">
+      <div class="item-sku" id="item-sku">AJ4892-52</div>
+      <div class="item-nome" id="item-nome">Carregando...</div>
+      <div class="counter-area">
+        <div>
+          <div class="counter-num" id="counter-lido">0</div>
+        </div>
+        <div class="counter-sep">/</div>
+        <div class="counter-total" id="counter-total">4</div>
+        <div class="counter-bar">
+          <div class="counter-bar-track">
+            <div class="counter-bar-fill" id="counter-fill" style="width:0%"></div>
+          </div>
+          <div class="counter-label">unidades lidas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cam-box" id="cam-box">
+      <video id="cam-video" autoplay playsinline muted></video>
+      <div class="cam-overlay">
+        <div class="cam-frame">
+          <div class="cam-corner-tl"></div>
+          <div class="cam-corner-br"></div>
+          <div class="cam-line"></div>
+        </div>
+      </div>
+      <div class="cam-label">Aponte para o código de barras do produto</div>
+    </div>
+
+    <div class="error-msg" id="error-msg">Produto incorreto! Verifique o item.</div>
+
+    <div class="sep-actions">
+      <button class="btn btn-danger" onclick="reiniciarItem()">↺ Reiniciar item</button>
+      <button class="btn btn-gray" onclick="proximoItem()">Pular item ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONCLUÍDO -->
+<div id="screen-concluido" class="screen">
+  <div class="concluido-content">
+    <div class="concluido-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <div class="concluido-title">Separação concluída!</div>
+    <div class="concluido-sub">Todos os itens foram separados com sucesso.</div>
+    <div class="summary-box">
+      <div class="summary-row"><span class="summary-key">Pedidos</span><span class="summary-val" id="sum-pedidos">—</span></div>
+      <div class="summary-row"><span class="summary-key">SKUs separados</span><span class="summary-val" id="sum-skus">—</span></div>
+      <div class="summary-row"><span class="summary-key">Unidades totais</span><span class="summary-val" id="sum-unidades">—</span></div>
+      <div class="summary-row"><span class="summary-key">Início</span><span class="summary-val" id="sum-inicio">—</span></div>
+      <div class="summary-row"><span class="summary-key">Duração</span><span class="summary-val" id="sum-duracao">—</span></div>
+    </div>
+    <div class="concluido-btns">
+      <button class="btn btn-blue" onclick="voltarDashboard()">Voltar ao início</button>
+      <button class="btn btn-outline" onclick="iniciarBusca()">Nova separação</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG SUPABASE ───────────────────────────────────────────
+// SUBSTITUIR COM SUAS CREDENCIAIS
+const SUPABASE_URL = 'https://rljrsrugrekfszmvtdbe.supabase.co';
+const SUPABASE_ANON_KEY = 'COLE_SUA_ANON_KEY_AQUI';
+const EDGE_BUSCAR = `${SUPABASE_URL}/functions/v1/buscar-separacao`;
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── ESTADO ───────────────────────────────────────────────────
+let usuario      = null;
+let separacaoAtual = null;
+let itensAtuais  = [];
+let itemIdx      = 0;
+let totalPedidos = 0;
+let iniciouEm    = null;
+let scannerAtivo = false;
+let videoStream  = null;
+
+// ─── NAVEGAÇÃO ────────────────────────────────────────────────
+function mostrarTela(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const err   = document.getElementById('login-error');
+  err.classList.remove('show');
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+  if (error) { err.classList.add('show'); return; }
+
+  usuario = data.user;
+  await carregarDashboard();
+  mostrarTela('screen-dashboard');
+}
+
+async function fazerLogout() {
+  await sb.auth.signOut();
+  usuario = null;
+  mostrarTela('screen-login');
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+async function carregarDashboard() {
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('dash-usuario').textContent = usuario?.email || '';
+
+  const { data: seps } = await sb.from('separacoes').select('*, itens_separacao(*)').eq('data', hoje).order('sequencia');
+  document.getElementById('stat-separacoes').textContent = seps?.length ?? 0;
+
+  // Conta pedidos em separação no banco local
+  const { count } = await sb.from('pedidos').select('*', { count: 'exact', head: true }).eq('situacao', 'Em Separação');
+  document.getElementById('stat-pedidos').textContent = count ?? 0;
+
+  // Histórico
+  const list = document.getElementById('hist-list');
+  if (!seps?.length) {
+    list.innerHTML = '<div class="empty-hist">Nenhuma separação ainda hoje.</div>';
+    return;
+  }
+  list.innerHTML = seps.map(s => {
+    const itens = s.itens_separacao || [];
+    const total = itens.reduce((a, i) => a + i.qtd_total, 0);
+    const badge = s.status === 'concluida'
+      ? '<span class="badge badge-ok">Concluída</span>'
+      : '<span class="badge badge-pend">Em andamento</span>';
+    const hora = new Date(s.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `
+      <div class="hist-card" onclick="verSeparacao('${s.id}')">
+        <div class="hist-seq">#${s.sequencia}</div>
+        <div class="hist-info">
+          <div class="hist-title">Separação das ${hora}</div>
+          <div class="hist-sub">${itens.length} SKUs · ${total} unidades</div>
+        </div>
+        ${badge}
+      </div>`;
+  }).join('');
+}
+
+// ─── BUSCA NO BLING ───────────────────────────────────────────
+async function iniciarBusca() {
+  mostrarTela('screen-loading');
+  const msgs = [
+    'Conectando ao Bling...',
+    'Buscando pedidos Em Separação...',
+    'Agrupando produtos por SKU...',
+    'Gravando sessão de separação...',
+  ];
+  let t = 0;
+  let msgIdx = 0;
+  document.getElementById('loading-msg').textContent = msgs[0];
+
+  const timer = setInterval(() => {
+    t++;
+    document.getElementById('loading-timer').textContent = `${t}s`;
+    if (t % 3 === 0 && msgIdx < msgs.length - 1) {
+      msgIdx++;
+      document.getElementById('loading-msg').textContent = msgs[msgIdx];
+    }
+  }, 1000);
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const resp = await fetch(EDGE_BUSCAR, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+    });
+    const result = await resp.json();
+    clearInterval(timer);
+
+    if (!result.ok) throw new Error(result.error);
+
+    if (!result.itens?.length) {
+      alert('Nenhum pedido Em Separação encontrado no Bling.');
+      mostrarTela('screen-dashboard');
+      return;
+    }
+
+    // Busca itens do banco com IDs reais
+    const { data: itensDb } = await sb
+      .from('itens_separacao')
+      .select('*')
+      .eq('separacao_id', result.separacao_id)
+      .order('ordem');
+
+    separacaoAtual = { id: result.separacao_id, sequencia: result.total_pedidos };
+    itensAtuais    = itensDb || [];
+    totalPedidos   = result.total_pedidos;
+    itemIdx        = 0;
+
+    mostrarLista();
+
+  } catch (e) {
+    clearInterval(timer);
+    alert('Erro ao buscar separação: ' + e.message);
+    mostrarTela('screen-dashboard');
+  }
+}
+
+// ─── LISTA ────────────────────────────────────────────────────
+async function verSeparacao(sepId) {
+  const { data: sep }  = await sb.from('separacoes').select('*').eq('id', sepId).single();
+  const { data: itens } = await sb.from('itens_separacao').select('*').eq('separacao_id', sepId).order('ordem');
+  separacaoAtual = sep;
+  itensAtuais    = itens || [];
+  totalPedidos   = 0;
+  itemIdx        = 0;
+  mostrarLista();
+}
+
+function mostrarLista() {
+  const total = itensAtuais.reduce((a, i) => a + i.qtd_total, 0);
+  document.getElementById('lista-pedidos').textContent = totalPedidos || '—';
+  document.getElementById('lista-skus').textContent    = itensAtuais.length;
+  document.getElementById('lista-unidades').textContent = total;
+
+  const pendentes = itensAtuais.filter(i => !i.concluido).length;
+  document.getElementById('lista-sub').textContent = `${pendentes} pendente${pendentes !== 1 ? 's' : ''}`;
+
+  const html = itensAtuais.map((item, idx) => `
+    <div class="lista-item ${item.concluido ? 'done' : ''}" onclick="irParaSeparacao(${idx})">
+      <div class="lista-item-sku">${item.sku}</div>
+      <div class="lista-item-info">
+        <div class="lista-item-nome">${item.nome || ''}</div>
+        <div class="lista-item-qtd">${item.qtd_lida}/${item.qtd_total} un</div>
+      </div>
+      <div class="lista-item-check ${item.concluido ? 'done' : ''}">
+        ${item.concluido ? '✓' : ''}
+      </div>
+    </div>`).join('');
+  document.getElementById('lista-itens').innerHTML = html;
+
+  mostrarTela('screen-lista');
+}
+
+function voltarLista() {
+  pararCamera();
+  mostrarLista();
+}
+
+function voltarDashboard() {
+  pararCamera();
+  carregarDashboard();
+  mostrarTela('screen-dashboard');
+}
+
+// ─── SEPARAÇÃO ────────────────────────────────────────────────
+function irParaSeparacao(idx) {
+  // Pula para primeiro não concluído se idx = 0
+  if (idx === 0) {
+    const primeiro = itensAtuais.findIndex(i => !i.concluido);
+    idx = primeiro === -1 ? 0 : primeiro;
+  }
+  itemIdx    = idx;
+  iniciouEm  = iniciouEm || new Date();
+  renderizarItem();
+  mostrarTela('screen-separacao');
+  iniciarCamera();
+}
+
+function renderizarItem() {
+  const item     = itensAtuais[itemIdx];
+  const total    = itensAtuais.length;
+  const concluidos = itensAtuais.filter(i => i.concluido).length;
+  const pct      = Math.round((concluidos / total) * 100);
+
+  document.getElementById('sep-titulo').textContent   = `Separação #${separacaoAtual?.sequencia || ''}`;
+  document.getElementById('sep-prog-text').textContent = `Item ${itemIdx + 1} de ${total}`;
+  document.getElementById('sep-prog-pct').textContent  = `${pct}%`;
+  document.getElementById('sep-prog-fill').style.width = `${pct}%`;
+  document.getElementById('item-sku').textContent       = item.sku;
+  document.getElementById('item-nome').textContent      = item.nome || '';
+  document.getElementById('counter-lido').textContent   = item.qtd_lida;
+  document.getElementById('counter-total').textContent  = item.qtd_total;
+  const fillPct = item.qtd_total > 0 ? Math.round((item.qtd_lida / item.qtd_total) * 100) : 0;
+  document.getElementById('counter-fill').style.width   = `${fillPct}%`;
+
+  const card = document.getElementById('item-card');
+  card.classList.remove('success', 'error');
+  document.getElementById('error-msg').classList.remove('show');
+}
+
+async function registrarLeitura(skuLido) {
+  const item = itensAtuais[itemIdx];
+  const card = document.getElementById('item-card');
+
+  if (skuLido !== item.sku) {
+    // Produto errado
+    card.classList.add('error');
+    document.getElementById('error-msg').classList.add('show');
+    setTimeout(() => { card.classList.remove('error'); }, 500);
+    vibrar(300);
+    return;
+  }
+
+  // Produto correto
+  document.getElementById('error-msg').classList.remove('show');
+  item.qtd_lida++;
+
+  const concluido = item.qtd_lida >= item.qtd_total;
+  if (concluido) item.concluido = true;
+
+  // Atualiza banco
+  await sb.from('itens_separacao')
+    .update({ qtd_lida: item.qtd_lida, concluido })
+    .eq('id', item.id);
+
+  if (concluido) {
+    card.classList.add('success');
+    vibrar(100);
+    setTimeout(() => proximoItem(), 800);
+  } else {
+    renderizarItem();
+    vibrar(50);
+  }
+
+  renderizarItem();
+}
+
+async function proximoItem() {
+  pararCamera();
+  const proximo = itensAtuais.findIndex((i, idx) => idx > itemIdx && !i.concluido);
+
+  if (proximo === -1) {
+    // Verifica se todos concluídos
+    const pendentes = itensAtuais.filter(i => !i.concluido);
+    if (pendentes.length === 0) {
+      await finalizarSeparacao();
+      return;
+    }
+    // Volta ao primeiro pendente
+    const primeiro = itensAtuais.findIndex(i => !i.concluido);
+    itemIdx = primeiro;
+  } else {
+    itemIdx = proximo;
+  }
+
+  renderizarItem();
+  iniciarCamera();
+}
+
+async function reiniciarItem() {
+  const item = itensAtuais[itemIdx];
+  item.qtd_lida  = 0;
+  item.concluido = false;
+  await sb.from('itens_separacao').update({ qtd_lida: 0, concluido: false }).eq('id', item.id);
+  renderizarItem();
+}
+
+async function finalizarSeparacao() {
+  pararCamera();
+  await sb.from('separacoes').update({ status: 'concluida', concluido_em: new Date().toISOString() }).eq('id', separacaoAtual.id);
+
+  const duracao = iniciouEm ? Math.round((Date.now() - iniciouEm.getTime()) / 60000) : 0;
+  const total   = itensAtuais.reduce((a, i) => a + i.qtd_total, 0);
+  const hora    = iniciouEm ? iniciouEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—';
+
+  document.getElementById('sum-pedidos').textContent  = totalPedidos || '—';
+  document.getElementById('sum-skus').textContent     = itensAtuais.length;
+  document.getElementById('sum-unidades').textContent = total;
+  document.getElementById('sum-inicio').textContent   = hora;
+  document.getElementById('sum-duracao').textContent  = `${duracao} min`;
+
+  mostrarTela('screen-concluido');
+}
+
+// ─── CÂMERA / SCANNER ─────────────────────────────────────────
+async function iniciarCamera() {
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('cam-video');
+    video.srcObject = videoStream;
+    scannerAtivo = true;
+    escanear();
+  } catch (e) {
+    console.warn('Câmera não disponível:', e);
+    // Fallback: input manual
+    const sku = prompt(`Digite o SKU manualmente:\n(Esperado: ${itensAtuais[itemIdx]?.sku})`);
+    if (sku) registrarLeitura(sku.trim().toUpperCase());
+  }
+}
+
+function pararCamera() {
+  scannerAtivo = false;
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
+}
+
+function escanear() {
+  if (!scannerAtivo) return;
+  // Usa BarcodeDetector nativo (Android Chrome suporta)
+  if (!('BarcodeDetector' in window)) {
+    // Fallback: input manual no toque na cam
+    document.getElementById('cam-box').onclick = () => {
+      const sku = prompt(`Digite o SKU (esperado: ${itensAtuais[itemIdx]?.sku})`);
+      if (sku) registrarLeitura(sku.trim().toUpperCase());
+    };
+    return;
+  }
+
+  const detector = new BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'] });
+  const video    = document.getElementById('cam-video');
+
+  const loop = async () => {
+    if (!scannerAtivo) return;
+    try {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        const barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          const raw = barcodes[0].rawValue;
+          await registrarLeitura(raw.trim().toUpperCase());
+          await sleep(1500); // pausa entre leituras
+        }
+      }
+    } catch {}
+    requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function vibrar(ms) {
+  if (navigator.vibrate) navigator.vibrate(ms);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── INIT ─────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    usuario = session.user;
+    await carregarDashboard();
+    mostrarTela('screen-dashboard');
+  }
+})();
+</script>
+</body>
+</html>
