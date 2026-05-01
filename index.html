@@ -114,7 +114,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .lista-item-qtd { font-size: 13px; font-weight: 600; color: var(--gray-900); margin-top: 2px; }
 .lista-item-check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--gray-300); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .lista-item-check.done { background: var(--green); border-color: var(--green); color: white; }
-.start-btn-wrap { padding: 16px; background: var(--gray-100); }
+.start-btn-wrap { padding: 16px; background: var(--gray-100); position: sticky; bottom: 0; border-top: 0.5px solid var(--gray-300); }
 
 /* SEPARAÇÃO */
 #screen-separacao { background: var(--gray-100); }
@@ -279,7 +279,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
     <div id="lista-itens"></div>
   </div>
   <div class="start-btn-wrap">
-    <button class="btn btn-blue" onclick="irParaSeparacao(0)">Iniciar separação ›</button>
+    <button class="btn btn-blue" onclick="iniciarSeparacao()">Iniciar separação ›</button>
   </div>
 </div>
 
@@ -503,7 +503,7 @@ async function iniciarBusca() {
       .eq('separacao_id', result.separacao_id)
       .order('ordem');
 
-    separacaoAtual = { id: result.separacao_id, sequencia: result.total_pedidos };
+    separacaoAtual = { id: result.separacao_id, sequencia: result.sequencia };
     itensAtuais    = itensDb || [];
     totalPedidos   = result.total_pedidos;
     itemIdx        = 0;
@@ -565,6 +565,15 @@ function voltarDashboard() {
 }
 
 // ─── SEPARAÇÃO ────────────────────────────────────────────────
+function iniciarSeparacao() {
+  const primeiro = itensAtuais.findIndex(i => !i.concluido);
+  itemIdx   = primeiro === -1 ? 0 : primeiro;
+  iniciouEm = iniciouEm || new Date();
+  renderizarItem();
+  mostrarTela("screen-separacao");
+  iniciarCamera();
+}
+
 function irParaSeparacao(idx) {
   // Pula para primeiro não concluído se idx = 0
   if (idx === 0) {
