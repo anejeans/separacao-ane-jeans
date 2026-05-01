@@ -541,6 +541,7 @@ async function verSeparacao(sepId) {
 }
 
 function mostrarLista() {
+  console.log('mostrarLista — itensAtuais:', itensAtuais?.length, JSON.stringify(itensAtuais?.slice(0,2)));
   const total = itensAtuais.reduce((a, i) => a + i.qtd_total, 0);
   document.getElementById('lista-pedidos').textContent = totalPedidos || '—';
   document.getElementById('lista-skus').textContent    = itensAtuais.length;
@@ -578,20 +579,20 @@ function voltarDashboard() {
 
 // ─── SEPARAÇÃO ────────────────────────────────────────────────
 function iniciarSeparacao() {
+  if (!itensAtuais || itensAtuais.length === 0) {
+    alert('Nenhum item carregado. Tente buscar novamente.');
+    return;
+  }
   const primeiro = itensAtuais.findIndex(i => !i.concluido);
   itemIdx   = primeiro === -1 ? 0 : primeiro;
   iniciouEm = iniciouEm || new Date();
   renderizarItem();
-  mostrarTela("screen-separacao");
+  mostrarTela('screen-separacao');
   iniciarCamera();
 }
 
 function irParaSeparacao(idx) {
-  // Pula para primeiro não concluído se idx = 0
-  if (idx === 0) {
-    const primeiro = itensAtuais.findIndex(i => !i.concluido);
-    idx = primeiro === -1 ? 0 : primeiro;
-  }
+  if (!itensAtuais || itensAtuais.length === 0) return;
   itemIdx    = idx;
   iniciouEm  = iniciouEm || new Date();
   renderizarItem();
