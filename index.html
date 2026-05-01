@@ -202,6 +202,8 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
     </div>
     <div id="login-error" class="login-error">E-mail ou senha incorretos.</div>
     <button class="btn btn-blue" onclick="fazerLogin()">Entrar</button>
+    <button class="btn btn-gray" onclick="esqueceuSenha()" style="margin-top:4px;">Esqueci minha senha</button>
+    <div id="reset-msg" style="font-size:13px;color:#2E7D32;text-align:center;display:none;">E-mail de redefinição enviado! Verifique sua caixa de entrada.</div>
   </div>
 </div>
 
@@ -366,7 +368,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 // ─── CONFIG SUPABASE ───────────────────────────────────────────
 // SUBSTITUIR COM SUAS CREDENCIAIS
 const SUPABASE_URL = 'https://rljrsrugrekfszmvtdbe.supabase.co';
-const SUPABASE_ANON_KEY = 'COLE_SUA_ANON_KEY_AQUI';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsanJzcnVncmVrZnN6bXZ0ZGJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzI2NDYsImV4cCI6MjA5MzA0ODY0Nn0.S4gdOeDFrL-Q9HYRHKRreEWCm0ns_A_iuK6vYUoDef4';
 const EDGE_BUSCAR = `${SUPABASE_URL}/functions/v1/buscar-separacao`;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -388,6 +390,16 @@ function mostrarTela(id) {
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────
+async function esqueceuSenha() {
+  const email = document.getElementById("login-email").value.trim();
+  if (!email) { alert("Digite seu e-mail primeiro."); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://anejeans.github.io/separacao-ane-jeans/"
+  });
+  if (error) { alert("Erro ao enviar e-mail: " + error.message); return; }
+  document.getElementById("reset-msg").style.display = "block";
+}
+
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
