@@ -232,7 +232,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.07</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.08</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -670,6 +670,11 @@ async function registrarLeitura(skuLido) {
     setTimeout(() => { card.classList.remove('error'); }, 500);
     vibrar(300);
     bipar('erro');
+
+    // IMPORTANTE: zera memória do último código pra permitir
+    // que o usuário leia DE NOVO o mesmo SKU errado e ouça o bipe
+    ultimoCodigoLido  = '';
+    ultimoCodigoTempo = 0;
     return;
   }
 
@@ -892,35 +897,59 @@ function vibrar(ms) {
 function bipar(tipo = 'ok') {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
 
     if (tipo === 'ok') {
-      // Bip curto agudo — leitura correta
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      // Bip estilo leitor profissional — agudo, curto, FORTE
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';                    // som mais "duro" como leitor
+      osc.frequency.setValueAtTime(2700, ctx.currentTime);
+      gain.gain.setValueAtTime(0.6, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.15);
+      osc.stop(ctx.currentTime + 0.12);
+
     } else if (tipo === 'completo') {
-      // Dois bips — item concluído
-      osc.frequency.setValueAtTime(660, ctx.currentTime);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.25);
+      // Dois bipes ascendentes — item totalmente separado
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'square';
+      osc1.frequency.setValueAtTime(2200, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.6, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.1);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(3000, ctx.currentTime + 0.13);
+      gain2.gain.setValueAtTime(0.6, ctx.currentTime + 0.13);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.13);
+      osc2.stop(ctx.currentTime + 0.28);
+
     } else if (tipo === 'erro') {
-      // Bip grave longo — produto errado
-      osc.frequency.setValueAtTime(220, ctx.currentTime);
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      // Buzina grave longa — produto errado
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';                  // som mais áspero
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.7, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
       osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.4);
+      osc.stop(ctx.currentTime + 0.5);
     }
-  } catch(e) {}
+  } catch(e) { console.warn('Bipe falhou:', e); }
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
