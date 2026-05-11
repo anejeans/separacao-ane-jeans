@@ -191,6 +191,19 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .summary-key { color: var(--gray-700); }
 .summary-val { font-weight: 700; color: var(--gray-900); }
 .concluido-btns { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.modal-box { background: var(--white); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 14px; }
+.modal-title { font-size: 18px; font-weight: 700; color: var(--gray-900); }
+.modal-sub { font-size: 14px; color: var(--gray-500); font-family: monospace; }
+.modal-options { display: flex; flex-direction: column; gap: 10px; }
+.modal-opt { display: flex; align-items: center; gap: 14px; background: var(--gray-100); border: 2px solid transparent; border-radius: var(--radius-sm); padding: 14px 16px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; }
+.modal-opt:active { transform: scale(0.98); background: var(--blue-light); border-color: var(--blue); }
+.modal-opt-icon { font-size: 28px; flex-shrink: 0; }
+.modal-opt-text { flex: 1; min-width: 0; }
+.modal-opt-title { font-size: 15px; font-weight: 600; color: var(--gray-900); }
+.modal-opt-sub { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -232,7 +245,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.08</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.09</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -356,8 +369,40 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 
     <div class="sep-actions">
       <button class="btn btn-danger" onclick="reiniciarItem()">↺ Reiniciar item</button>
-      <button class="btn btn-gray" onclick="proximoItem()">Pular item ›</button>
+      <button class="btn btn-gray" onclick="abrirModalPular()">Pular item ›</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: Pular item -->
+<div id="modal-pular" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">Pular item</div>
+    <div class="modal-sub" id="modal-pular-sku">SKU XXX</div>
+    <div class="modal-options">
+      <button class="modal-opt" onclick="confirmarPular('nao_localizado')">
+        <div class="modal-opt-icon">📦</div>
+        <div class="modal-opt-text">
+          <div class="modal-opt-title">Produto não localizado</div>
+          <div class="modal-opt-sub">Não consegui achar no estoque</div>
+        </div>
+      </button>
+      <button class="modal-opt" onclick="confirmarPular('avariado')">
+        <div class="modal-opt-icon">⚠️</div>
+        <div class="modal-opt-text">
+          <div class="modal-opt-title">Avariado</div>
+          <div class="modal-opt-sub">Produto com defeito</div>
+        </div>
+      </button>
+      <button class="modal-opt" onclick="confirmarPular('outro')">
+        <div class="modal-opt-icon">📝</div>
+        <div class="modal-opt-text">
+          <div class="modal-opt-title">Outro motivo</div>
+          <div class="modal-opt-sub">Vou explicar depois</div>
+        </div>
+      </button>
+    </div>
+    <button class="btn btn-gray" onclick="fecharModalPular()" style="margin-top:8px;">Cancelar</button>
   </div>
 </div>
 
@@ -510,15 +555,16 @@ async function iniciarBusca() {
   try {
     const { data: { session } } = await sb.auth.getSession();
 
-    // Apaga separações não iniciadas (qtd_lida = 0 em todos os itens) do dia de hoje
-    const hoje = new Date().toISOString().split('T')[0];
-    const { data: sepsHoje } = await sb.from('separacoes').select('id').eq('data', hoje).eq('status', 'em_andamento');
-    for (const sep of (sepsHoje || [])) {
-      const { count } = await sb.from('itens_separacao').select('*', { count: 'exact', head: true }).eq('separacao_id', sep.id).gt('qtd_lida', 0);
-      if (count === 0) {
-        await sb.from('itens_separacao').delete().eq('separacao_id', sep.id);
-        await sb.from('separacoes').delete().eq('id', sep.id);
-      }
+    // Cancela separações em_andamento de qualquer dia (mantém histórico mas libera o app)
+    const { data: sepsAndamento } = await sb
+      .from('separacoes')
+      .select('id')
+      .eq('status', 'em_andamento');
+
+    if (sepsAndamento && sepsAndamento.length > 0) {
+      await sb.from('separacoes')
+        .update({ status: 'cancelada', concluido_em: new Date().toISOString() })
+        .in('id', sepsAndamento.map(s => s.id));
     }
 
     const resp = await fetch(EDGE_BUSCAR, {
@@ -702,6 +748,34 @@ async function registrarLeitura(skuLido) {
   }
 
   renderizarItem();
+}
+
+// ─── MODAL: Pular item ────────────────────────────────────────
+function abrirModalPular() {
+  const item = itensAtuais[itemIdx];
+  if (!item) return;
+  document.getElementById('modal-pular-sku').textContent = item.sku;
+  document.getElementById('modal-pular').style.display = 'flex';
+}
+
+function fecharModalPular() {
+  document.getElementById('modal-pular').style.display = 'none';
+}
+
+async function confirmarPular(motivo) {
+  const item = itensAtuais[itemIdx];
+  if (!item) { fecharModalPular(); return; }
+
+  // Marca como pulado: concluido=true + motivo_skip
+  item.concluido   = true;
+  item.motivo_skip = motivo;
+
+  await sb.from('itens_separacao')
+    .update({ concluido: true, motivo_skip: motivo })
+    .eq('id', item.id);
+
+  fecharModalPular();
+  proximoItem();
 }
 
 async function proximoItem() {
