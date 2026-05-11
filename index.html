@@ -140,7 +140,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .counter-bar-track { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
 .counter-bar-fill { height: 100%; background: var(--blue); border-radius: 4px; transition: width 0.3s; }
 .counter-label { font-size: 12px; color: var(--gray-500); }
-.cam-box { background: #000; border-radius: var(--radius); overflow: hidden; position: relative; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+.cam-box { background: #000; border-radius: var(--radius); overflow: hidden; position: relative; min-height: 200px; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, box-shadow 0.2s; border: 3px solid transparent; }
 .cam-box video { width: 100%; display: block; }
 .cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .cam-frame { width: 220px; height: 100px; position: relative; }
@@ -152,6 +152,27 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 .cam-line { position: absolute; left: 10%; right: 10%; height: 2px; background: rgba(0,105,194,0.8); top: 50%; animation: scan 2s ease-in-out infinite; }
 @keyframes scan { 0%,100%{top:20%} 50%{top:80%} }
 .cam-label { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.7); font-size: 12px; }
+
+/* ─── ESTADOS VISUAIS DO SCANNER ─── */
+.cam-box.cam-pronto {
+  border-color: #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+}
+.cam-box.cam-processando {
+  border-color: #eab308;
+  box-shadow: 0 0 25px rgba(234, 179, 8, 0.6);
+  animation: pulse-yellow 0.6s ease-in-out infinite;
+}
+.cam-box.cam-cooldown {
+  border-color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  opacity: 0.85;
+}
+@keyframes pulse-yellow {
+  0%, 100% { box-shadow: 0 0 25px rgba(234, 179, 8, 0.6); }
+  50%      { box-shadow: 0 0 35px rgba(234, 179, 8, 0.9); }
+}
+
 .error-msg { background: var(--red-light); color: var(--red); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 14px; font-weight: 500; text-align: center; display: none; }
 .error-msg.show { display: block; animation: fade-in 0.2s; }
 @keyframes fade-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
@@ -211,7 +232,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.04</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.05</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -366,7 +387,6 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 
 <script>
 // ─── CONFIG SUPABASE ───────────────────────────────────────────
-// SUBSTITUIR COM SUAS CREDENCIAIS
 const SUPABASE_URL = 'https://rljrsrugrekfszmvtdbe.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsanJzcnVncmVrZnN6bXZ0ZGJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzI2NDYsImV4cCI6MjA5MzA0ODY0Nn0.S4gdOeDFrL-Q9HYRHKRreEWCm0ns_A_iuK6vYUoDef4';
 const EDGE_BUSCAR = `${SUPABASE_URL}/functions/v1/buscar-separacao`;
@@ -382,6 +402,14 @@ let totalPedidos = 0;
 let iniciouEm    = null;
 let scannerAtivo = false;
 let videoStream  = null;
+
+// ─── SCANNER: ANTI-DUPLICAÇÃO ─────────────────────────────────
+let scannerBloqueado   = false;
+let ultimoCodigoLido   = '';
+let ultimoCodigoTempo  = 0;
+
+const COOLDOWN_GERAL_MS   = 1500;
+const COOLDOWN_MESMO_CODE = 1500;
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────
 function mostrarTela(id) {
@@ -715,6 +743,14 @@ async function finalizarSeparacao() {
 }
 
 // ─── CÂMERA / SCANNER ─────────────────────────────────────────
+function setEstadoCam(estado) {
+  // estado: 'pronto' | 'processando' | 'cooldown'
+  const box = document.getElementById('cam-box');
+  if (!box) return;
+  box.classList.remove('cam-pronto', 'cam-processando', 'cam-cooldown');
+  box.classList.add('cam-' + estado);
+}
+
 async function iniciarCamera() {
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
@@ -723,6 +759,12 @@ async function iniciarCamera() {
     const video = document.getElementById('cam-video');
     video.srcObject = videoStream;
     scannerAtivo = true;
+
+    // Reseta estado de anti-duplicação ao iniciar nova câmera
+    scannerBloqueado  = false;
+    ultimoCodigoLido  = '';
+    ultimoCodigoTempo = 0;
+
     escanear();
   } catch (e) {
     console.warn('Câmera não disponível:', e);
@@ -738,10 +780,17 @@ function pararCamera() {
     videoStream.getTracks().forEach(t => t.stop());
     videoStream = null;
   }
+  // Remove indicadores visuais
+  const box = document.getElementById('cam-box');
+  if (box) box.classList.remove('cam-pronto', 'cam-processando', 'cam-cooldown');
 }
 
 function escanear() {
   if (!scannerAtivo) return;
+
+  // Indicador visual: pronto pra ler
+  setEstadoCam('pronto');
+
   // Usa BarcodeDetector nativo (Android Chrome suporta)
   if (!('BarcodeDetector' in window)) {
     // Fallback: input manual no toque na cam
@@ -755,18 +804,57 @@ function escanear() {
   const detector = new BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code'] });
   const video    = document.getElementById('cam-video');
 
+  // ─── SCANNER COM ANTI-DUPLICAÇÃO + FEEDBACK VISUAL ──────────────
+  // 3 camadas de proteção:
+  // 1. Estado `scannerBloqueado` — durante cooldown, ignora detecções
+  // 2. COOLDOWN_GERAL_MS — pausa entre qualquer leitura (1.5s)
+  // 3. COOLDOWN_MESMO_CODE — pausa pra MESMO SKU (1.5s)
   const loop = async () => {
     if (!scannerAtivo) return;
+
+    // ─── Camada 1: bloqueado durante cooldown ───
+    if (scannerBloqueado) {
+      requestAnimationFrame(loop);
+      return;
+    }
+
     try {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
         const barcodes = await detector.detect(video);
+
         if (barcodes.length > 0) {
-          const raw = barcodes[0].rawValue;
-          await registrarLeitura(raw.trim().toUpperCase());
-          await sleep(1500); // pausa entre leituras
+          const raw   = barcodes[0].rawValue.trim().toUpperCase();
+          const agora = Date.now();
+
+          // ─── Camada 2 + 3: anti-duplicação ───
+          const ehMesmoCodigo      = (raw === ultimoCodigoLido);
+          const cooldownNecessario = ehMesmoCodigo ? COOLDOWN_MESMO_CODE : COOLDOWN_GERAL_MS;
+          const tempoDesdeUltima   = agora - ultimoCodigoTempo;
+
+          if (tempoDesdeUltima < cooldownNecessario) {
+            // Ainda em cooldown — ignora
+            requestAnimationFrame(loop);
+            return;
+          }
+
+          // ─── Bloqueia + processa ───
+          scannerBloqueado  = true;
+          setEstadoCam('processando');
+          ultimoCodigoLido  = raw;
+          ultimoCodigoTempo = agora;
+
+          await registrarLeitura(raw);
+
+          // Mostra cooldown e libera após COOLDOWN_GERAL_MS
+          setEstadoCam('cooldown');
+          setTimeout(() => {
+            scannerBloqueado = false;
+            if (scannerAtivo) setEstadoCam('pronto');
+          }, COOLDOWN_GERAL_MS);
         }
       }
     } catch {}
+
     requestAnimationFrame(loop);
   };
   loop();
