@@ -232,7 +232,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.06</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.07</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -549,6 +549,8 @@ async function iniciarBusca() {
     separacaoAtual = { id: result.separacao_id, sequencia: result.sequencia };
     // Usa itensDb se disponível, senão usa result.itens como fallback
     itensAtuais    = (itensDb && itensDb.length > 0) ? itensDb : (result.itens || []);
+    // Garantia extra: ordena por SKU com numeric natural (7013-46 < 7013-100)
+    itensAtuais.sort((a, b) => (a.sku || '').localeCompare(b.sku || '', 'pt-BR', { numeric: true }));
     totalPedidos   = result.total_pedidos;
     itemIdx        = 0;
 
@@ -568,6 +570,8 @@ async function verSeparacao(sepId) {
   const { data: itens } = await sb.from('itens_separacao').select('*').eq('separacao_id', sepId).order('ordem');
   separacaoAtual = sep;
   itensAtuais    = itens || [];
+  // Garantia extra: ordena por SKU com numeric natural
+  itensAtuais.sort((a, b) => (a.sku || '').localeCompare(b.sku || '', 'pt-BR', { numeric: true }));
   totalPedidos   = 0;
   itemIdx        = 0;
   mostrarLista();
@@ -697,22 +701,43 @@ async function registrarLeitura(skuLido) {
 
 async function proximoItem() {
   pararCamera();
-  const proximo = itensAtuais.findIndex((i, idx) => idx > itemIdx && !i.concluido);
 
-  if (proximo === -1) {
-    // Verifica se todos concluídos
-    const pendentes = itensAtuais.filter(i => !i.concluido);
-    if (pendentes.length === 0) {
-      await finalizarSeparacao();
-      return;
+  // Busca próximo pendente A PARTIR DO ATUAL (inclusive)
+  // Isso evita saltos confusos quando se mistura pular/reiniciar
+  let proximo = -1;
+
+  // Primeiro: procura DEPOIS do itemIdx atual
+  for (let i = itemIdx + 1; i < itensAtuais.length; i++) {
+    if (!itensAtuais[i].concluido) {
+      proximo = i;
+      break;
     }
-    // Volta ao primeiro pendente
-    const primeiro = itensAtuais.findIndex(i => !i.concluido);
-    itemIdx = primeiro;
-  } else {
-    itemIdx = proximo;
   }
 
+  // Se não achou depois, dá a volta — procura ANTES do itemIdx
+  if (proximo === -1) {
+    for (let i = 0; i < itemIdx; i++) {
+      if (!itensAtuais[i].concluido) {
+        proximo = i;
+        break;
+      }
+    }
+  }
+
+  // Se não tem nenhum pendente nem antes nem depois, finaliza
+  if (proximo === -1) {
+    // Verifica também o item atual (caso de "Reiniciar item")
+    if (!itensAtuais[itemIdx].concluido) {
+      // O próprio item atual ainda está pendente — fica nele
+      renderizarItem();
+      iniciarCamera();
+      return;
+    }
+    await finalizarSeparacao();
+    return;
+  }
+
+  itemIdx = proximo;
   renderizarItem();
   iniciarCamera();
 }
