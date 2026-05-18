@@ -118,29 +118,29 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 
 /* SEPARAÇÃO */
 #screen-separacao { background: var(--gray-100); }
-.sep-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.sep-content { padding: 14px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
 .progress-header { background: var(--white); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
 .progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .progress-text { font-size: 13px; color: var(--gray-700); }
 .progress-pct { font-size: 13px; font-weight: 700; color: var(--blue); }
 .progress-bar { height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.3s; }
-.item-card { background: var(--white); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-md); border: 2px solid transparent; }
+.item-card { background: var(--white); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-md); border: 2px solid transparent; }
 .item-card.success { border-color: var(--green); animation: pulse-green 0.4s ease; }
 .item-card.error { border-color: var(--red); animation: shake 0.4s ease; }
 @keyframes pulse-green { 0%,100%{transform:scale(1)} 50%{transform:scale(1.02)} }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-.item-sku { font-size: 36px; font-weight: 800; color: var(--blue); font-family: monospace; letter-spacing: 0.05em; line-height: 1.1; }
-.item-nome { font-size: 14px; color: var(--gray-700); margin-top: 6px; }
-.counter-area { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
-.counter-num { font-size: 56px; font-weight: 800; color: var(--gray-900); line-height: 1; }
-.counter-sep { font-size: 28px; color: var(--gray-300); font-weight: 300; }
-.counter-total { font-size: 28px; font-weight: 600; color: var(--gray-500); }
+.item-sku { font-size: 30px; font-weight: 800; color: var(--blue); font-family: monospace; letter-spacing: 0.05em; line-height: 1.1; }
+.item-nome { font-size: 13px; color: var(--gray-700); margin-top: 4px; }
+.counter-area { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+.counter-num { font-size: 44px; font-weight: 800; color: var(--gray-900); line-height: 1; }
+.counter-sep { font-size: 24px; color: var(--gray-300); font-weight: 300; }
+.counter-total { font-size: 24px; font-weight: 600; color: var(--gray-500); }
 .counter-bar { flex: 1; }
 .counter-bar-track { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
 .counter-bar-fill { height: 100%; background: var(--blue); border-radius: 4px; transition: width 0.3s; }
 .counter-label { font-size: 12px; color: var(--gray-500); }
-.cam-box { background: #000; border-radius: var(--radius); overflow: hidden; position: relative; min-height: 200px; max-height: 280px; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, box-shadow 0.2s; border: 3px solid transparent; }
+.cam-box { background: #000; border-radius: var(--radius); overflow: hidden; position: relative; min-height: 180px; max-height: 220px; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, box-shadow 0.2s; border: 3px solid transparent; }
 .cam-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .cam-frame { width: 220px; height: 100px; position: relative; }
@@ -245,7 +245,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.10</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.11</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
