@@ -245,7 +245,7 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
 <div id="screen-dashboard" class="screen">
   <div class="topbar">
     <div style="flex:1">
-      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.09</span></div>
+      <div class="topbar-title">Ane Jeans — Separação <span style="font-size:11px;opacity:0.7;font-weight:400;">v1.10</span></div>
       <div class="topbar-sub" id="dash-usuario"></div>
     </div>
     <button style="background:none;border:none;color:white;font-size:13px;cursor:pointer;" onclick="fazerLogout()">Sair</button>
@@ -383,22 +383,15 @@ html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; backg
       <button class="modal-opt" onclick="confirmarPular('nao_localizado')">
         <div class="modal-opt-icon">📦</div>
         <div class="modal-opt-text">
-          <div class="modal-opt-title">Produto não localizado</div>
-          <div class="modal-opt-sub">Não consegui achar no estoque</div>
-        </div>
-      </button>
-      <button class="modal-opt" onclick="confirmarPular('avariado')">
-        <div class="modal-opt-icon">⚠️</div>
-        <div class="modal-opt-text">
-          <div class="modal-opt-title">Avariado</div>
-          <div class="modal-opt-sub">Produto com defeito</div>
+          <div class="modal-opt-title">Não encontrado</div>
+          <div class="modal-opt-sub">Não tem no estoque — marca como lido</div>
         </div>
       </button>
       <button class="modal-opt" onclick="confirmarPular('outro')">
-        <div class="modal-opt-icon">📝</div>
+        <div class="modal-opt-icon">↩️</div>
         <div class="modal-opt-text">
-          <div class="modal-opt-title">Outro motivo</div>
-          <div class="modal-opt-sub">Vou explicar depois</div>
+          <div class="modal-opt-title">Outros</div>
+          <div class="modal-opt-sub">Vou procurar depois — volta na fila</div>
         </div>
       </button>
     </div>
@@ -582,25 +575,14 @@ async function iniciarBusca() {
       return;
     }
 
-    // Busca itens do banco com IDs reais
-    const { data: itensDb } = await sb
-      .from('itens_separacao')
-      .select('*')
-      .eq('separacao_id', result.separacao_id)
-      .order('ordem');
-
-    console.log('itensDb retornados:', itensDb?.length, JSON.stringify(itensDb?.slice(0,2)));
-    console.log('result.itens:', result.itens?.length, JSON.stringify(result.itens?.slice(0,2)));
-
-    separacaoAtual = { id: result.separacao_id, sequencia: result.sequencia };
-    // Usa itensDb se disponível, senão usa result.itens como fallback
-    itensAtuais    = (itensDb && itensDb.length > 0) ? itensDb : (result.itens || []);
+    // ─── Mantém só em memória. Sessão será criada se/quando apertar "Iniciar separação"
+    separacaoAtual = null;
+    itensAtuais    = result.itens || [];
     // Garantia extra: ordena por SKU com numeric natural (7013-46 < 7013-100)
     itensAtuais.sort((a, b) => (a.sku || '').localeCompare(b.sku || '', 'pt-BR', { numeric: true }));
     totalPedidos   = result.total_pedidos;
     itemIdx        = 0;
 
-    console.log('itensAtuais final:', itensAtuais.length);
     mostrarLista();
 
   } catch (e) {
@@ -661,11 +643,75 @@ function voltarDashboard() {
 }
 
 // ─── SEPARAÇÃO ────────────────────────────────────────────────
-function iniciarSeparacao() {
+
+// Cria a sessão no banco (separacoes + itens_separacao) se ainda não existir.
+// Chamado apenas no momento em que a pessoa REALMENTE inicia a separação,
+// evitando lixo de sessões abandonadas.
+async function garantirSessaoCriada() {
+  if (separacaoAtual?.id) return; // já existe
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const { count } = await sb
+    .from('separacoes')
+    .select('*', { count: 'exact', head: true })
+    .eq('data', hoje);
+  const sequencia = (count ?? 0) + 1;
+
+  const { data: { user } } = await sb.auth.getUser();
+
+  const { data: sep, error: errSep } = await sb
+    .from('separacoes')
+    .insert({
+      data:       hoje,
+      sequencia,
+      status:     'em_andamento',
+      criado_por: user?.id
+    })
+    .select()
+    .single();
+
+  if (errSep || !sep) {
+    alert('Erro criando separação: ' + (errSep?.message || 'desconhecido'));
+    throw new Error('falha criar separação');
+  }
+
+  separacaoAtual = sep;
+
+  // Insere os itens vinculados
+  const rows = itensAtuais.map((item, idx) => ({
+    separacao_id: sep.id,
+    sku:          item.sku,
+    nome:         item.nome,
+    qtd_total:    item.qtd_total,
+    qtd_lida:     0,
+    concluido:    false,
+    ordem:        item.ordem ?? idx + 1
+  }));
+
+  const { data: insItens, error: errItens } = await sb
+    .from('itens_separacao')
+    .insert(rows)
+    .select()
+    .order('ordem');
+
+  if (errItens) {
+    alert('Erro inserindo itens: ' + errItens.message);
+    throw new Error('falha inserir itens');
+  }
+
+  // Atualiza itensAtuais com os IDs reais do banco (pra updates funcionarem)
+  itensAtuais = insItens || [];
+  itensAtuais.sort((a, b) => (a.sku || '').localeCompare(b.sku || '', 'pt-BR', { numeric: true }));
+}
+
+async function iniciarSeparacao() {
   if (!itensAtuais || itensAtuais.length === 0) {
     alert('Nenhum item carregado. Tente buscar novamente.');
     return;
   }
+  try {
+    await garantirSessaoCriada();
+  } catch { return; }
   const primeiro = itensAtuais.findIndex(i => !i.concluido);
   itemIdx   = primeiro === -1 ? 0 : primeiro;
   iniciouEm = iniciouEm || new Date();
@@ -674,8 +720,11 @@ function iniciarSeparacao() {
   iniciarCamera();
 }
 
-function irParaSeparacao(idx) {
+async function irParaSeparacao(idx) {
   if (!itensAtuais || itensAtuais.length === 0) return;
+  try {
+    await garantirSessaoCriada();
+  } catch { return; }
   itemIdx    = idx;
   iniciouEm  = iniciouEm || new Date();
   renderizarItem();
@@ -766,12 +815,16 @@ async function confirmarPular(motivo) {
   const item = itensAtuais[itemIdx];
   if (!item) { fecharModalPular(); return; }
 
-  // Marca como pulado: concluido=true + motivo_skip
-  item.concluido   = true;
+  // Regra:
+  // - 'nao_localizado' → marca como concluído (não volta na fila), grava motivo
+  // - 'outro'         → NÃO marca como concluído (volta na fila depois), grava motivo
+  const concluir = (motivo === 'nao_localizado');
+
   item.motivo_skip = motivo;
+  if (concluir) item.concluido = true;
 
   await sb.from('itens_separacao')
-    .update({ concluido: true, motivo_skip: motivo })
+    .update({ concluido: concluir, motivo_skip: motivo })
     .eq('id', item.id);
 
   fecharModalPular();
